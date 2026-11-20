@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Building Sentinel 3: Homeworld in Godot 4 — Dev Deep-Dive & Field Manual</title>
+  <style>
+    :root {
+      --bg: #080d14;
+      --bg-panel: #0e1622;
+      --bg-card: #121d2d;
+      --bg-code: #0a1019;
+      --border: #1e334d;
+      --border-bright: #2f5b88;
+      --cyan: #4be8ff;
+      --teal: #38f2b8;
+      --amber: #ffbe4b;
+      --red: #ff5d6c;
+      --purple: #b87aff;
+      --text: #dce7f5;
+      --muted: #8ea6c2;
+      --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --font-mono: ui-monospace, "Cascadia Code", "Fira Code", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top right, #0f1e30 0%, var(--bg) 55%);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.65;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 270px minmax(0, 1fr);
+      min-height: 100vh;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    /* Sidebar */
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 24px 18px;
+      background: rgba(10, 16, 25, 0.92);
+      border-right: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--teal);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+      color: #fff;
+      line-height: 1.25;
+    }
+
+    nav a {
+      display: block;
+      padding: 7px 10px;
+      margin-bottom: 3px;
+      border-radius: 6px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      border-left: 2px solid transparent;
+      transition: all 0.15s ease;
+    }
+
+    nav a:hover, nav a.active {
+      background: rgba(75, 232, 255, 0.08);
+      color: var(--cyan);
+      border-left-color: var(--cyan);
+    }
+
+    .nav-group {
+      margin-top: 16px;
+      margin-bottom: 6px;
+      padding-left: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #5e7897;
+    }
+
+    /* Main Content */
+    main {
+      padding: 36px clamp(20px, 4vw, 56px) 80px;
+      max-width: 980px;
+    }
+
+    .hero {
+      padding: 28px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(22, 42, 66, 0.85), rgba(14, 22, 34, 0.95));
+      border: 1px solid var(--border-bright);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+      margin-bottom: 36px;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .pill {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(75, 232, 255, 0.12);
+      color: var(--cyan);
+      border: 1px solid rgba(75, 232, 255, 0.25);
+    }
+
+    .pill.teal { background: rgba(56, 242, 184, 0.12); color: var(--teal); border-color: rgba(56, 242, 184, 0.25); }
+    .pill.amber { background: rgba(255, 190, 75, 0.12); color: var(--amber); border-color: rgba(255, 190, 75, 0.25); }
+
+    h2 {
+      margin-top: 44px;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      font-size: 24px;
+      color: #fff;
+    }
+
+    h3 {
+      margin-top: 26px;
+      margin-bottom: 10px;
+      font-size: 18px;
+      color: var(--cyan);
+    }
+
+    p { margin: 0 0 14px; }
+    ul, ol { margin: 0 0 16px; padding-left: 22px; }
+    li { margin-bottom: 6px; }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--bg-code);
+      color: var(--teal);
+      border: 1px solid #1a2a3f;
+    }
+
+    pre {
+      margin: 14px 0 18px;
+      padding: 16px;
+      border-radius: 10px;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.5;
+      color: #d3e5fa;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin: 18px 0 26px;
+    }
+
+    .stat-box {
+      padding: 14px;
+      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+
+    .stat-num {
+      font-family: var(--font-mono);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--cyan);
+      line-height: 1.1;
+    }
+
+    .stat-label {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin: 16px 0 24px;
+    }
+
+    .card {
+      padding: 18px;
+      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+
+    .card h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .badge.reused { background: rgba(56, 242, 184, 0.15); color: var(--teal); }
+    .badge.mapped { background: rgba(255, 190, 75, 0.15); color: var(--amber); }
+    .badge.built { background: rgba(75, 232, 255, 0.15); color: var(--cyan); }
+
+    .callout {
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid var(--cyan);
+      background: rgba(75, 232, 255, 0.07);
+    }
+    .callout.warn { border-left-color: var(--amber); background: rgba(255, 190, 75, 0.08); }
+    .callout.tip { border-left-color: var(--teal); background: rgba(56, 242, 184, 0.07); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: #142235;
+      color: var(--cyan);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+    .calc-panel {
+      padding: 20px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-bright);
+      margin: 20px 0 28px;
+    }
+
+    .calc-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+
+    select, input[type="range"], input[type="search"] {
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-bright);
+      background: var(--bg-code);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    .calc-result {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+    }
+
+    .calc-result strong { color: var(--amber); font-size: 16px; }
+
+    .diagram-wrap {
+      margin: 18px 0 26px;
+      padding: 16px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <div class="brand">
+      <span class="brand-tag">Engineering Postmortem & Manual</span>
+      <h1>Sentinel 3 in Godot 4</h1>
+    </div>
+    <nav>
+      <div class="nav-group">How It Was Built</div>
+      <a href="#overview">1. Overview & Numbers</a>
+      <a href="#re">2. Reverse Engineering the APK</a>
+      <a href="#reuse">3. Reused vs. Built New</a>
+      <a href="#architecture">4. Godot Architecture & Decisions</a>
+      <a href="#warstories">5. Tricky Bugs & Visual Fixes</a>
+
+      <div class="nav-group">Field Manual</div>
+      <a href="#howtoplay">6. How to Play & Pro Tips</a>
+      <a href="#towers">7. Tower & Economy Reference</a>
+      <a href="#calculator">8. Interactive Wave Calculator</a>
+
+      <div class="nav-group">Modding Guide</div>
+      <a href="#modding">9. Editing & Modding Cookbook</a>
+      <a href="#testing">10. Testing & Verification</a>
+    </nav>
+  </aside>
+
+  <main>
+    <section class="hero" id="overview">
+      <div class="hero-meta">
+        <span class="pill">Godot 4.7.2 (GL Compatibility)</span>
+        <span class="pill teal">Desktop + Mobile</span>
+        <span class="pill amber">Reverse Engineered from v1.4.2 APK</span>
+      </div>
+      <h2 style="margin-top:0;border:none;padding:0;font-size:30px;">How We Built a Sentinel 3: Homeworld Clone</h2>
+      <p>
+        Rather than guessing enemy health pools, upgrade prices, or wave orders by eye, we paired
+        <strong>static binary analysis</strong> of the original Android native library with a custom
+        <strong>Python asset-extraction pipeline</strong> and a lightweight <strong>Godot 4.7</strong> simulation engine.
+        Every mission from Campaign 1 and Campaign 2 runs off real extracted <code>.tmx</code> maps,
+        real wave pattern tables, and authentic formulas.
+      </p>
+
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-num">35</div><div class="stat-label">Campaign Missions Decoded</div></div>
+        <div class="stat-box"><div class="stat-num">29</div><div class="stat-label">.tmx Maps Parsed</div></div>
+        <div class="stat-box"><div class="stat-num">86</div><div class="stat-label">PNG Sprite Sheets</div></div>
+        <div class="stat-box"><div class="stat-num">51</div><div class="stat-label">.ogg Music & SFX</div></div>
+        <div class="stat-box"><div class="stat-num">42</div><div class="stat-label">Automated Gameplay Assertions</div></div>
+      </div>
+
+      <div class="callout tip">
+        <strong>Why <code>docs/</code> stays outside the game build:</strong> This folder contains an empty
+        <code>docs/.gdignore</code> file. Godot skips any directory containing <code>.gdignore</code>, so this manual
+        never gets imported into <code>.godot/</code> or bundled into exports.
+      </div>
+    </section>
+
+    <section id="re">
+      <h2>2. Reverse Engineering the Android Binary</h2>
+      <p>
+        Inside <code>Sentinel-3-Homeworld-v1-4-2.apk</code>, the native C++ game library
+        (<code>lib/x86/libSentinel3Android.so</code>) shipped with <strong>unstripped symbol names</strong>.
+        That allowed our analysis script to jump straight to key functions and read raw static data tables directly
+        out of the ELF binary into <code>tools/extract_apk_assets.py</code> and <code>scripts/game_data.gd</code>.
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>Original Symbol / Offset</th><th>What We Found</th><th>Where It Lives Now</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>g_CampaignData</code> @ <code>0x1e208c</code></td>
+            <td>35 mission entries (60 bytes each): title & briefing pointers, map ID, wave pattern byte, wave count, starting cash/energy, and 4 difficulty float multipliers (Easy/Medium/Hard/Psycho).</td>
+            <td><code>assets/data/campaign_data.json</code> via <code>extract_apk_assets.py</code></td>
+          </tr>
+          <tr>
+            <td><code>g_EnemyWavePatternData</code> @ <code>0x1e3ab0</code></td>
+            <td>20 wave patterns × 30 bytes (600 bytes total), each byte indexing enemy types <code>0..19</code>.</td>
+            <td><code>assets/data/campaign_data.json</code></td>
+          </tr>
+          <tr>
+            <td><code>EnemyManager::SpawnEnemy</code> @ <code>0x110d50</code></td>
+            <td>Quadratic HP & bounty scaling using <code>MthPow2(x) = x²</code>, plus speeds, melee damage, attack rates, resistances, and flying flags.</td>
+            <td><code>GameData.ENEMY_DEFS</code> & <code>get_wave_spawn_spec()</code></td>
+          </tr>
+          <tr>
+            <td><code>TowerManager::InitTowerProperties</code> @ <code>0x11bd90</code></td>
+            <td>All 4-tier tower build/upgrade cost tables (<code>0x19e2d0</code>) and damage tables (<code>0x19e4a0</code>) across all 9 ground turret types.</td>
+            <td><code>GameData.TOWER_DEFS</code> in <code>scripts/game_data.gd</code></td>
+          </tr>
+          <tr>
+            <td><code>TowerManager::GetTowerSellPrice</code> @ <code>0x11b150</code></td>
+            <td>Sell refund multiplier = <strong>0.80</strong> (80% of cumulative build + upgrade investment).</td>
+            <td><code>SELL_REFUND_RATIO := 0.80</code> in <code>game_data.gd</code> & <code>tower.gd</code></td>
+          </tr>
+          <tr>
+            <td><code>PlayerManager::AddMoneyInterest</code> @ <code>0x119560</code></td>
+            <td>End-of-wave interest = <code>int((cash / 100.0) * 5.0)</code> — 5% on unspent cash.</td>
+            <td><code>_on_wave_cleared()</code> in <code>scripts/game_manager.gd</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>The Disguised-PNG & UV-Coordinate Discovery</h3>
+      <p>
+        Two clever quirks inside the APK assets needed handling in <code>tools/extract_apk_assets.py</code>:
+      </p>
+      <ul>
+        <li>
+          <strong><code>.mp3</code> files that are actually PNGs:</strong> Older Android versions compressed non-media assets
+          or choked on large uncompressed APK entries, so the original developers named 80+ PNG texture atlases
+          <code>*.mp3</code> to bypass Android's asset compression! Our extractor inspects the first 8 bytes for the
+          <code>\x89PNG\r\n\x1a\n</code> magic header and saves them as real <code>.png</code> files.
+        </li>
+        <li>
+          <strong>Normalized UVs over pixel bounds in <code>.xml</code> atlases:</strong> Some atlases (such as
+          <code>Behemoth</code>) were downscaled compared to the XML's <code>pix</code> dimensions, but every XML region
+          included normalized <code>value</code> coordinates (<code>0.0..1.0</code>). Multiplying those UVs by the actual
+          PNG width and height yields exact pixel rectangles regardless of resolution tier.
+        </li>
+      </ul>
+    </section>
+
+    <section id="reuse">
+      <h2>3. What Was Reused vs. Mapped vs. Built New</h2>
+      <p>
+        An interesting discovery about Sentinel 3 on Android is that the base 32 MB APK didn't contain everything:
+        a separate ~67 MB download pack held the Campaign 1 tilesets and 1×1 turret sheets. Here is how each piece was sourced:
+      </p>
+
+      <div class="card-grid">
+        <div class="card">
+          <h4>Original Audio & Maps <span class="badge reused">Reused 100%</span></h4>
+          <p>
+            All <strong>29 <code>.tmx</code> map files</strong> (tile layers, <code>EnemyPath</code> /
+            <code>FlyingEnemyPath</code> waypoints, <code>LinkedDestroyable</code> barrier links,
+            <code>SpecialGameObjects</code> drop points and Alien Eggs) and all <strong>51 <code>.ogg</code> sound effects & music</strong>
+            came straight from the APK.
+          </p>
+        </div>
+
+        <div class="card">
+          <h4>Heavy Turrets, Hero & Creeps <span class="badge reused">Reused 100%</span></h4>
+          <p>
+            All enemy sprite sheets (<code>MutantWalker*</code>, <code>Arachnid*</code>, <code>Flyer*</code>,
+            <code>Resistant*</code>, <code>SlimerWalker</code>, <code>Behemoth</code>, all 5 Bosses), the
+            <strong>Commander</strong> (<code>Hero1</code>), <code>EggMound</code>, and both 64-frame 2×2 heavy turret sheets
+            (<code>ArtilleryNormal/Max</code>, <code>PoisonNormal/Max</code>) are original assets.
+          </p>
+        </div>
+
+        <div class="card">
+          <h4>Campaign 1 Tilesets <span class="badge mapped">Remapped</span></h4>
+          <p>
+            While Campaign 2 tilesets (<code>TS_BaseBG6</code>, <code>TS_BGSet05/06</code>, <code>TS_BGElements06/07</code>)
+            shipped inside the APK, Campaign 1 names (<code>BaseBG1..5</code>, <code>BGSet01..04</code>) share identical
+            256×256 and 512×512 grid layouts — so <code>TILESET_FALLBACKS</code> maps them automatically while still
+            supporting optional HD/cache packs if dropped into Downloads.
+          </p>
+        </div>
+
+        <div class="card">
+          <h4>1×1 Turrets, Barriers & Drone <span class="badge built">Built in Python</span></h4>
+          <p>
+            Because the 1×1 turret/barrier textures lived in the missing external OBB cache (and Python lacked
+            <code>Pillow</code>), <code>extract_apk_assets.py</code> includes a custom zero-dependency <strong>RGBA Canvas + zlib PNG encoder</strong>
+            that procedurally draws a 512×512 <code>turrets_sheet.png</code> with L1–L4 pedestals and rotating barrels.
+          </p>
+        </div>
+
+        <div class="card">
+          <h4>Godot 4.7 Engine & Simulation <span class="badge built">Built New</span></h4>
+          <p>
+            All gameplay code was written fresh in typed GDScript: <code>GameData</code>, <code>MapRenderer</code>,
+            <code>GameManager</code>, <code>TowerEntity</code>, <code>EnemyEntity</code>, <code>BarrierEntity</code>,
+            <code>CommanderEntity</code>, <code>HarvestDroneEntity</code>, HUD, and automated tests.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2>4. Architecture & Technical Decisions</h2>
+
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 880 185" width="100%" height="185" xmlns="http://www.w3.org/2000/svg" style="font-family:monospace;font-size:12px;">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#4be8ff" />
+            </marker>
+          </defs>
+          <rect x="10" y="25" width="150" height="58" rx="8" fill="#121d2d" stroke="#2f5b88"/>
+          <text x="85" y="49" fill="#ffbe4b" text-anchor="middle" font-weight="bold">Android APK</text>
+          <text x="85" y="68" fill="#8ea6c2" text-anchor="middle">.so + .tmx + .mp3/.ogg</text>
+
+          <line x1="160" y1="54" x2="210" y2="54" stroke="#4be8ff" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="215" y="18" width="190" height="72" rx="8" fill="#121d2d" stroke="#38f2b8"/>
+          <text x="310" y="43" fill="#38f2b8" text-anchor="middle" font-weight="bold">extract_apk_assets.py</text>
+          <text x="310" y="61" fill="#dce7f5" text-anchor="middle">PNGs + Atlas JSON</text>
+          <text x="310" y="77" fill="#dce7f5" text-anchor="middle">Maps &amp; Campaign JSON</text>
+
+          <line x1="405" y1="54" x2="455" y2="54" stroke="#4be8ff" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="460" y="22" width="175" height="64" rx="8" fill="#121d2d" stroke="#4be8ff"/>
+          <text x="547" y="46" fill="#4be8ff" text-anchor="middle" font-weight="bold">GameData (Autoload)</text>
+          <text x="547" y="65" fill="#8ea6c2" text-anchor="middle">Cached Textures &amp; Stats</text>
+
+          <line x1="547" y1="86" x2="547" y2="112" stroke="#4be8ff" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="215" y="116" width="420" height="56" rx="8" fill="#16283e" stroke="#4be8ff"/>
+          <text x="425" y="139" fill="#fff" text-anchor="middle" font-weight="bold">GameManager (scenes/main.tscn)</text>
+          <text x="425" y="158" fill="#8ea6c2" text-anchor="middle">Waves · Projectiles · VFX · Interest · Desktop/Mobile HUD</text>
+
+          <line x1="635" y1="144" x2="685" y2="144" stroke="#4be8ff" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <rect x="690" y="18" width="180" height="154" rx="8" fill="#121d2d" stroke="#2f5b88"/>
+          <text x="780" y="44" fill="#4be8ff" text-anchor="middle" font-weight="bold">Entity Nodes</text>
+          <text x="780" y="68" fill="#dce7f5" text-anchor="middle">MapRenderer (Tiles/Grid)</text>
+          <text x="780" y="88" fill="#dce7f5" text-anchor="middle">TowerEntity (L1-L4)</text>
+          <text x="780" y="108" fill="#dce7f5" text-anchor="middle">EnemyEntity (Paths/DoT)</text>
+          <text x="780" y="128" fill="#dce7f5" text-anchor="middle">CommanderEntity (Aura)</text>
+          <text x="780" y="148" fill="#dce7f5" text-anchor="middle">Barrier &amp; HarvestDrone</text>
+        </svg>
+      </div>
+
+      <h3>Key Architectural Choices</h3>
+      <ul>
+        <li>
+          <strong>Compiled JSON data over hardcoded scene instances:</strong> Parsing <code>.tmx</code> files in Python
+          into <code>assets/data/maps.json</code> avoids XML parsing overhead at runtime and lets <code>MapRenderer</code>
+          switch instantly between any of the 29 levels via a single dropdown.
+        </li>
+        <li>
+          <strong>Programmatic <code>CanvasItem._draw()</code> rendering:</strong> Towers, enemies, health bars, range
+          rings, Booster tethers, lasers, projectiles, and path previews draw directly inside lightweight
+          <code>Node2D</code> scripts rather than dozens of nested <code>Sprite2D</code> / <code>CollisionShape2D</code>
+          children per creep. Even when 100+ Swarm Arachnids spawn, frame times stay crisp on mobile and desktop alike.
+        </li>
+        <li>
+          <strong>Single <code>960×540</code> logical canvas for Desktop & Mobile:</strong> Configured in
+          <code>project.godot</code> with <code>canvas_items/expand</code> stretch and <code>emulate_touch_from_mouse</code>
+          / <code>emulate_mouse_from_touch</code>. Both tap-to-place and click-drag-release share the exact same
+          <code>_input()</code> pipeline.
+        </li>
+        <li>
+          <strong>Step-function simulation hook for testing:</strong> Splitting <code>step_simulation(dt)</code> out of
+          <code>_process(delta)</code> allows <code>tests/verify_gameplay.gd</code> to fast-forward entire waves in
+          under a second deterministically.
+        </li>
+      </ul>
+    </section>
+
+    <section id="warstories">
+      <h2>5. Engineering War Stories: Real Bugs Solved</h2>
+
+      <div class="card">
+        <h4>Bug 1: Frozen Missile &amp; Poison Projectiles</h4>
+        <p>
+          <strong>Symptom:</strong> Green Poison orbs and yellow Missile dots sometimes froze in mid-air above towers.
+        </p>
+        <p>
+          <strong>Cause:</strong> Projectiles held a dictionary reference <code>p["target"]</code> to their target
+          <code>EnemyEntity</code>. When another tower killed and <code>queue_free()</code>'d that enemy mid-flight,
+          assigning <code>var tgt: EnemyEntity = p["target"]</code> inside <code>_update_projectiles()</code> threw a
+          Godot 4 runtime type error on the freed object <em>before</em> <code>is_instance_valid(tgt)</code> could run,
+          aborting the projectile loop every frame.
+        </p>
+        <p>
+          <strong>Fix:</strong> Clear <code>p["target"] = null</code> inside <code>_on_enemy_died()</code> and
+          <code>_on_enemy_reached_end()</code>, validate <code>is_instance_valid(tgt_var)</code> on an untyped
+          <code>Variant</code> before casting <code>as EnemyEntity</code>, and add a <code>4.0s</code> safety TTL.
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h4>Bug 2: Artillery &amp; Poison Facing the Wrong Direction</h4>
+        <p>
+          <strong>Symptom:</strong> 2×2 Artillery cannons and Poison nozzles looked turned away from the enemies they shot.
+        </p>
+        <p>
+          <strong>Cause:</strong> Inspecting the 64-frame sheets (<code>ArtilleryNormal.png</code>,
+          <code>PoisonNormal.png</code>) showed frames <code>0..31</code> rotate <strong>counter-clockwise</strong> on
+          screen starting from <strong>Left</strong> (<code>0 = Left, 8 = Down, 16 = Right, 24 = Up</code>), while frames
+          <code>32..63</code> are muzzle-flash firing frames. Our initial formula rotated clockwise from Up and locked
+          Level 3 towers permanently onto frames <code>32..63</code>.
+        </p>
+        <p>
+          <strong>Fix:</strong> Switched to <code>wrapf(PI - angle_rad, 0.0, TAU)</code> in
+          <code>TowerEntity.get_native_dir_idx()</code>, gated frames <code>32..63</code> on active recoil
+          (<code>_recoil &gt; 0.35</code>), and required towers to turn within <code>0.28 rad</code> of their target
+          before firing. At the same time, we aligned <code>EnemyEntity._draw()</code> to the actual
+          <code>16×5</code> heading-row / walk-column layout of the <code>MutantWalker</code> and <code>Arachnid</code> sheets.
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h4>Bug 3: Godot 4.7 Strict Variant Type Inference &amp; Autoload Tests</h4>
+        <p>
+          Godot 4.7 rejects <code>:=</code> when the right-hand side is an untyped JSON dictionary lookup or array element
+          (requiring explicit types like <code>var camp: Variant = ...</code>), and running tests via
+          <code>-s test.gd</code> bypasses <code>[autoload]</code> singletons. Converting
+          <code>tests/verify_gameplay.gd</code> to extend <code>Node</code> inside <code>verify_gameplay.tscn</code>
+          resolved autoload initialization cleanly.
+        </p>
+      </div>
+    </section>
+
+    <section id="howtoplay">
+      <h2>6. Tactical Player's Guide (How to Play &amp; Win)</h2>
+
+      <h3>Controls (Desktop &amp; Mobile)</h3>
+      <ul>
+        <li><strong>Build a Turret:</strong> Click/tap a turret in the right sidebar, then tap any highlighted green map tile (or press and drag directly onto the map and release).</li>
+        <li><strong>Upgrade / Sell:</strong> Tap any built tower to open its range ring and Tactical Inspector (Upgrade, or Sell for <strong>80% refund</strong>).</li>
+        <li><strong>Command the Hero Mech:</strong> Tap the Commander (or click <code>MOVE CMDR</code>) then tap anywhere on the battlefield to reposition. Use <code>STOMP</code> for heavy AoE damage + 50% slow (12s cooldown).</li>
+        <li><strong>Orbital Weapons:</strong> Click an Orbital button under <em>Sentinel Orbital Weapons</em> and tap the target area to strike (drains Ship Energy).</li>
+        <li><strong>Keyboard Shortcuts:</strong> <code>Space</code> starts the next wave; <code>Esc</code> or Right-Click cancels build/target/move mode and clears selection.</li>
+      </ul>
+
+      <h3>6 Pro Tips for High Scores &amp; Harder Difficulties</h3>
+      <ol>
+        <li>
+          <strong>Bank in Multiples of $100 for Free Interest:</strong> At the end of every wave, you earn
+          <code>floor(cash / 100) * 5</code> (+5% interest, plus +$10 wave bonus). Waiting to spend $20 right after a
+          wave instead of right before it can push your cash over a $100 threshold for free bonus credits!
+        </li>
+        <li>
+          <strong>Move Your Commander Next to Key Choke Clusters:</strong> Commander's <strong>Morale Aura</strong> (96px
+          radius) grants nearby non-Booster towers <strong>+25% damage and +20% fire rate</strong> — plus the
+          Commander regenerates HP after 3s out of combat and respawns after 12s if defeated.
+        </li>
+        <li>
+          <strong>Let Slow &amp; Poison Work Together:</strong> Slow towers cut ground creep movement by 20%–35% for 3s,
+          keeping enemies inside Poison's 4-second burn DoT (up to 80 DPS at L4!) and Artillery splash zones far longer.
+        </li>
+        <li>
+          <strong>Booster Pool Sharing Math:</strong> One Booster divides its pool (35% at L1 up to <strong>900%</strong>
+          at L4!) across nearby offensive towers while also boosting their range (<code>+12%..+24%</code>). Even with
+          multiple towers in range, upgrading a central Booster multiplies your entire killbox.
+        </li>
+        <li>
+          <strong>Toggle Your Harvest Drone Smartly:</strong> Between tough waves, your Drone automatically generates
+          <strong>+$5 Cash &amp; +6 Energy per trip</strong>. When a forward Barrier takes heavy damage, click
+          <code>HARVEST</code> to switch it into <strong>Repair Mode</strong> (+25 HP/tick) — and don't be afraid to sell
+          forward towers near a falling Barrier (80% refund!) to reinforce the Base line behind it.
+        </li>
+        <li>
+          <strong>Respect Air &amp; Damage Resistances:</strong> Bombs, Slows, Poison, and Artillery only hit
+          <strong>Ground</strong> creeps — always build Laser, Missile, Beam, or Sniper coverage before Flyer waves!
+          Similarly, Resistant creeps take only <strong>25% damage</strong> from their matching type (Laser / Fire / Slow),
+          so mix Kinetic (Sniper) or Explosive (Bomb/Missile/Artillery) damage into your killzones.
+        </li>
+      </ol>
+    </section>
+
+    <section id="towers">
+      <h2>7. Complete Tower, Orbital &amp; Enemy Reference</h2>
+      <p style="color:var(--muted);">Filter towers by name, role, or target capability:</p>
+      <input type="search" id="towerSearch" placeholder="Filter towers (e.g. air, splash, 2x2, dot)..." style="width:100%;max-width:380px;margin-bottom:12px;" />
+
+      <table id="towerTable">
+        <thead>
+          <tr><th>Tower</th><th>Size</th><th>Targets</th><th>Costs (L1→L4)</th><th>Damage / Effect (L1→L4)</th><th>Range</th><th>Type</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <h3>Sentinel Orbital Weapons</h3>
+      <table>
+        <thead>
+          <tr><th>Ability</th><th>Energy Cost</th><th>Cooldown</th><th>Radius</th><th>Effect</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Orbital Laser</strong></td><td>50 E</td><td>14s</td><td>68 px</td><td>350 Laser damage to all enemies in beam radius.</td></tr>
+          <tr><td><strong>Ion Bomb</strong></td><td>35 E</td><td>10s</td><td>78 px</td><td>180 Explosive damage + 40% slow for 3.5s.</td></tr>
+          <tr><td><strong>Energizer</strong></td><td>25 E</td><td>12s</td><td>110 px</td><td>Overcharges all towers in radius (+50% fire rate for 10s).</td></tr>
+          <tr><td><strong>Repair Beam</strong></td><td>30 E</td><td>10s</td><td>80 px</td><td>Restores +250 HP to nearest Barrier / Base (and Commander if in range).</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="calculator">
+      <h2>8. Interactive Enemy Wave HP &amp; Bounty Calculator</h2>
+      <p>
+        Explore the reverse-engineered <code>get_wave_spawn_spec()</code> quadratic formula directly in your browser:
+        <code>HP = (base_hp + (hp_scale * w)²) * diff_mult</code> (where <code>w</code> is 0-based wave index).
+      </p>
+      <div class="calc-panel">
+        <div class="calc-controls">
+          <label>Enemy Type
+            <select id="calcEnemy"></select>
+          </label>
+          <label>Wave Number (<span id="calcWaveVal">1</span>)
+            <input type="range" id="calcWave" min="1" max="30" value="1" />
+          </label>
+          <label>Difficulty
+            <select id="calcDiff">
+              <option value="0.8">Easy (0.80×)</option>
+              <option value="1.0" selected>Medium (1.00×)</option>
+              <option value="1.15">Hard (1.15×)</option>
+              <option value="1.3">Psycho (1.30×)</option>
+            </select>
+          </label>
+        </div>
+        <div class="calc-result" id="calcOut"></div>
+      </div>
+    </section>
+
+    <section id="modding">
+      <h2>9. Modding &amp; Editing Cookbook</h2>
+      <p>Because the game keeps data cleanly separated from behavior, almost any mod takes only a few lines:</p>
+
+      <h3>Recipe A: Rebalance or Add a Turret</h3>
+      <p>Edit <code>TOWER_ORDER</code> and <code>TOWER_DEFS</code> in <code>scripts/game_data.gd</code>, then add any special firing logic in <code>scripts/entities/tower.gd</code> inside <code>_fire_at()</code>.</p>
+<pre>"railgun": {
+    "id": "railgun", "name": "Railgun", "short": "RAIL",
+    "footprint": 1, "targets_air": true, "targets_ground": true,
+    "costs": [120, 140, 180, 350],
+    "damage": [95.0, 210.0, 420.0, 900.0],
+    "reload": [1.4, 1.3, 1.2, 1.0],
+    "range": 195.0, "splash": 0.0, "slow_pct": 0.0, "dot_dps": 0.0,
+    "buff_pool": 0.0, "dmg_type": "kinetic", "sheet_row": 4,
+    "color": Color(1.0, 0.3, 0.45), "sfx": "Fire_SniperTower",
+    "desc": "Custom modded armor-piercing railgun."
+}</pre>
+
+      <h3>Recipe B: Change Starting Cash, Wave Order, or Interest Rate</h3>
+      <ul>
+        <li>Adjust <code>INTEREST_RATE := 0.05</code> or <code>SELL_REFUND_RATIO := 0.80</code> at the top of <code>scripts/game_data.gd</code>.</li>
+        <li>Edit individual mission <code>starting_cash</code>, <code>starting_energy</code>, <code>waves</code>, or <code>wave_patterns</code> inside <code>assets/data/campaign_data.json</code> (note: re-running <code>extract_apk_assets.py</code> regenerates JSON from the APK).</li>
+      </ul>
+
+      <h3>Recipe C: Edit or Create New Maps</h3>
+      <p>
+        Open any <code>assets/maps/Map*.tmx</code> in <strong>Tiled Map Editor</strong> (keep tile grid <code>21×16</code> at
+        <code>32×32</code>, preserve <code>EnemyPath</code> / <code>Destroyables</code> / <code>SpecialGameObjects</code>
+        object groups and <code>Path</code> / <code>Reserved</code> layer properties), then either re-run the map parser in
+        <code>tools/extract_apk_assets.py</code> or edit the compiled entry in <code>assets/data/maps.json</code>.
+      </p>
+
+      <h3>Recipe D: Use Original Campaign 1 HD Cache Assets (If You Have Them)</h3>
+      <p>
+        If you ever obtain the original Android external cache pack (e.g. <code>*sentinel*.obb</code> / <code>*hdaddon*.zip</code>)
+        and drop it into your Downloads folder, re-run:
+      </p>
+      <pre>python tools/extract_apk_assets.py</pre>
+      <p>
+        <code>find_source_zips()</code> automatically detects companion packs in <code>Downloads</code> and replaces the
+        fallback Campaign 1 tilesets with the original Campaign 1 textures without touching any GDScript!
+      </p>
+    </section>
+
+    <section id="testing">
+      <h2>10. Testing &amp; Verification</h2>
+      <p>Always run the automated gameplay suite after modding or editing simulation code:</p>
+<pre>godot --path . res://tests/verify_gameplay.tscn</pre>
+      <p>
+        It boots the real <code>scenes/main.tscn</code> scene, checks all 42 assertions (economy, upgrade math, Booster &amp;
+        Commander auras, 80% sell refunds, Wave 1 simulation, Orbital Laser, freed-target projectile clearing, 32-direction
+        Artillery alignment, and Campaign 2 Egg loading), and exits with code <code>0</code> on <code>ALL_TESTS_PASSED</code>.
+      </p>
+    </section>
+  </main>
+</div>
+
+<script>
+const TOWERS = [
+  { name: "Laser", size: "1×1", targets: "Ground + Air", costs: "$20 / 20 / 20 / 60", dmg: "1 / 2 / 4 / 15 dmg (0.10-0.20s)", range: "71 px", type: "laser" },
+  { name: "Bomb", size: "1×1", targets: "Ground Only", costs: "$50 / 50 / 50 / 150", dmg: "16 / 45 / 80 / 200 (48px splash; L4 Cluster)", range: "95 px", type: "explosive" },
+  { name: "Slow", size: "1×1", targets: "Ground Only", costs: "$60 / 50 / 50 / 100", dmg: "4 / 8 / 14 / 25 + 20%–35% slow (3s)", range: "78 px", type: "slow" },
+  { name: "Booster", size: "1×1", targets: "Support Aura", costs: "$50 / 60 / 80 / 300", dmg: "+35% / 100% / 220% / 900% shared dmg pool", range: "68 px", type: "support" },
+  { name: "Missile", size: "1×1", targets: "Ground + Air", costs: "$40 / 50 / 60 / 180", dmg: "20 / 30 / 35 / 40 homing (28px splash)", range: "134 px", type: "explosive" },
+  { name: "Poison", size: "2×2", targets: "Ground Only", costs: "$70 / 150 / 200 / 450", dmg: "4–40 hit + 5 / 25 / 50 / 80 DPS burn (4s)", range: "96 px", type: "fire (dot)" },
+  { name: "Artillery", size: "2×2", targets: "Ground Only", costs: "$100 / 150 / 150 / 500", dmg: "30 / 100 / 220 / 300 (64px splash)", range: "200 px", type: "explosive" },
+  { name: "Beam", size: "1×1", targets: "Ground + Air", costs: "$200 / 250 / 250 / 600", dmg: "300 / 900 / 1400 / 1800 heavy beam", range: "110 px", type: "laser" },
+  { name: "Sniper", size: "1×1", targets: "Ground + Air", costs: "$250 / 300 / 300 / 500", dmg: "300 / 700 / 1100 / 1800 rail shot", range: "245 px", type: "kinetic" },
+];
+
+const ENEMIES = [
+  { id: 0, name: "Mutant Scout", baseHp: 6, hpScale: 0.50, rewBase: 3.0, rewScale: 0.07, speed: 50, flying: false, resist: "None" },
+  { id: 1, name: "Mutant Stalker", baseHp: 8, hpScale: 0.55, rewBase: 3.5, rewScale: 0.07, speed: 52, flying: false, resist: "None" },
+  { id: 2, name: "Mutant Brute", baseHp: 11, hpScale: 0.62, rewBase: 4.0, rewScale: 0.07, speed: 48, flying: false, resist: "None" },
+  { id: 3, name: "Arachnid L1", baseHp: 4, hpScale: 0.30, rewBase: 3.0, rewScale: 0.07, speed: 80, flying: false, resist: "None" },
+  { id: 6, name: "Flyer L1", baseHp: 6, hpScale: 0.45, rewBase: 3.0, rewScale: 0.07, speed: 70, flying: true, resist: "None" },
+  { id: 9, name: "Laser Resistant", baseHp: 4, hpScale: 0.30, rewBase: 4.0, rewScale: 0.07, speed: 80, flying: false, resist: "Laser (0.25×)" },
+  { id: 10, name: "Fire Resistant", baseHp: 4, hpScale: 0.30, rewBase: 4.0, rewScale: 0.07, speed: 80, flying: false, resist: "Fire/Poison (0.25×)" },
+  { id: 11, name: "Slow Resistant", baseHp: 4, hpScale: 0.30, rewBase: 4.0, rewScale: 0.07, speed: 80, flying: false, resist: "Slow (0.20×)" },
+  { id: 12, name: "Slimer Walker", baseHp: 12, hpScale: 0.60, rewBase: 6.0, rewScale: 0.08, speed: 55, flying: false, resist: "None" },
+  { id: 13, name: "Behemoth", baseHp: 30, hpScale: 1.00, rewBase: 120.0, rewScale: 0.20, speed: 20, flying: false, resist: "None" },
+  { id: 14, name: "Walker Boss", baseHp: 250, hpScale: 2.60, rewBase: 25.0, rewScale: 0.07, speed: 20, flying: false, resist: "None" },
+  { id: 18, name: "Mother Boss", baseHp: 1200, hpScale: 3.50, rewBase: 150.0, rewScale: 0.09, speed: 18, flying: false, resist: "None" },
+];
+
+function renderTowers(filter = "") {
+  const q = filter.trim().toLowerCase();
+  const tbody = document.querySelector("#towerTable tbody");
+  tbody.innerHTML = TOWERS
+    .filter(t => !q || `${t.name} ${t.size} ${t.targets} ${t.dmg} ${t.type}`.toLowerCase().includes(q))
+    .map(t => `<tr>
+      <td><strong>${t.name}</strong></td>
+      <td><code>${t.size}</code></td>
+      <td>${t.targets}</td>
+      <td>${t.costs}</td>
+      <td>${t.dmg}</td>
+      <td>${t.range}</td>
+      <td><code>${t.type}</code></td>
+    </tr>`).join("");
+}
+
+function updateCalc() {
+  const e = ENEMIES[document.getElementById("calcEnemy").selectedIndex];
+  const wave1Based = parseInt(document.getElementById("calcWave").value, 10);
+  const w = wave1Based - 1;
+  const mult = parseFloat(document.getElementById("calcDiff").value);
+  document.getElementById("calcWaveVal").textContent = wave1Based;
+
+  const hp = (e.baseHp + Math.pow(e.hpScale * w, 2)) * mult;
+  const reward = Math.max(1, Math.floor(e.rewBase + Math.pow(e.rewScale * w, 2)));
+  let count;
+  if (e.id >= 13) count = 1 + Math.floor(w / 30);
+  else if (e.id >= 3 && e.id <= 5) count = Math.min(127, w + 12);
+  else count = Math.min(127, w + 15);
+
+  document.getElementById("calcOut").innerHTML = `
+    <div>HP / Unit: <strong>${hp.toFixed(1)}</strong></div>
+    <div>Wave Count: <strong>${count}×</strong></div>
+    <div>Bounty / Kill: <strong>$${reward}</strong></div>
+    <div>Speed: <strong>${e.speed} px/s</strong></div>
+    <div>Resist: <strong>${e.resist}</strong></div>
+  `;
+}
+
+document.getElementById("towerSearch").addEventListener("input", ev => renderTowers(ev.target.value));
+const enemySel = document.getElementById("calcEnemy");
+ENEMIES.forEach(e => {
+  const opt = document.createElement("option");
+  opt.textContent = e.name + (e.flying ? " [Air]" : "");
+  enemySel.appendChild(opt);
+});
+["calcEnemy", "calcWave", "calcDiff"].forEach(id => {
+  document.getElementById(id).addEventListener("input", updateCalc);
+});
+renderTowers();
+updateCalc();
+</script>
+</body>
+</html>

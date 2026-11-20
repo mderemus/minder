@@ -1,0 +1,35 @@
+; Engine configuration file.
+; Best edited via Godot 4.7.2, crafted cleanly for Desktop & Mobile.
+
+config_version=5
+
+[application]
+
+config/name="Sentinel 3: Homeworld"
+config/description="Sentinel 3: Homeworld Clone in Godot 4.7.2 for Desktop and Mobile"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[autoload]
+
+GameData="*res://scripts/game_data.gd"
+
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+pointing/emulate_mouse_from_touch=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=1

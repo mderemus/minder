@@ -1,0 +1,19 @@
+# Godot 4 cache & build outputs
+.godot/
+*.translation
+export_presets.cfg
+
+# User-supplied Android packages & extracted proprietary assets (Option A)
+# Run `python tools/extract_apk_assets.py` locally to populate assets/
+*.apk
+*.obb
+assets/textures/
+assets/audio/
+assets/maps/
+assets/data/
+
+# OS / Python artifacts
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
